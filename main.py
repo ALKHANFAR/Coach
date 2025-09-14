@@ -56,12 +56,20 @@ app.include_router(slack.router)
 async def startup_event():
     """تهيئة النظام عند البدء"""
     logger.info("🚀 Starting Siyadah Ops AI...")
-    try:
-        await init_db()
-        logger.info("✅ Database initialized successfully")
-    except Exception as e:
-        logger.error(f"❌ Database initialization failed: {e}")
-        # لا نوقف التطبيق إذا فشل MongoDB
+    
+    # التحقق من متغير تعطيل قاعدة البيانات
+    SHOULD_DISABLE_DB = os.getenv("DISABLE_DB", "false").lower() == "true"
+    
+    if not SHOULD_DISABLE_DB:
+        try:
+            await init_db()
+            logger.info("✅ Database initialized successfully")
+        except Exception as e:
+            logger.error(f"❌ Database initialization failed: {e}")
+            # لا نوقف التطبيق إذا فشل MongoDB
+    else:
+        logger.info("⚠️ Database initialization disabled by DISABLE_DB flag")
+    
     logger.info("✅ System initialized successfully")
 
 @app.on_event("shutdown")

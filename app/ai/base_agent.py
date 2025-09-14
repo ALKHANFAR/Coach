@@ -3,8 +3,12 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from app.config import settings
 import structlog
+import os
 
 logger = structlog.get_logger()
+
+# متغير تعطيل الذكاء الاصطناعي
+DISABLE_AI = os.getenv("DISABLE_AI", "false").lower() == "true"
 
 class BaseAgent(ABC):
     """Base class لجميع الـ AI agents مع دعم الـ prompts المرنة"""
@@ -12,6 +16,11 @@ class BaseAgent(ABC):
     def __init__(self, agent_type: str):
         self.agent_type = agent_type
         self.client = None
+        
+        # التحقق من متغير تعطيل الذكاء الاصطناعي
+        if DISABLE_AI:
+            logger.info(f"⚠️ AI initialization disabled by DISABLE_AI flag for {agent_type}")
+            return
         
         try:
             if not settings.openai_api_key:

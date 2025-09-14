@@ -1,74 +1,46 @@
-"""Slack integration endpoints"""
-from fastapi import APIRouter, Request, HTTPException
-from app.integrations.slack_bot import slack_events
-import structlog
+from fastapi import APIRouter, Request, BackgroundTasks
+from starlette.responses import JSONResponse
+import os
+from slack_sdk import WebClient
 
-logger = structlog.get_logger()
-router = APIRouter(prefix="/slack", tags=["Slack Integration"])
+router = APIRouter(prefix="/slack", tags=["slack"])
 
 @router.post("/events")
-async def slack_webhook(request: Request):
-    """webhook لاستقبال أحداث Slack"""
+async def slack_events(request: Request, background_tasks: BackgroundTasks):
+    body = await request.json()
+
+    # URL Verification
+    if body.get("type") == "url_verification":
+        return JSONResponse({"challenge": body.get("challenge")}, status_code=200)
+
+    # ACK fast (≤3s). Real work in background.
+    background_tasks.add_task(process_event_safely, body)
+    return JSONResponse({"ok": True}, status_code=200)
+
+def process_event_safely(body: dict):
     try:
-        return await slack_events(request)
-    except Exception as e:
-        logger.error(f"Error handling Slack webhook: {e}")
-        raise HTTPException(status_code=500, detail="Slack webhook error")
+        event = (body or {}).get("event", {}) or {}
+        etype = event.get("type")
+        channel = event.get("channel")
+        user = event.get("user")
+        text = (event.get("text") or "").strip()
+
+        # Ignore bot messages or missing channel
+        if event.get("bot_id") or not channel:
+            return
+
+        token = os.getenv("SLACK_BOT_TOKEN")
+        if not token:
+            return
+        client = WebClient(token=token)
+
+        # Reply on app mentions and DMs
+        if etype in ("app_mention", "message", "message.im"):
+            reply = "أنا جاهز ✅ — اكتب: `مهمة: ...` أو `هدف: ...`"
+            client.chat_postMessage(channel=channel, text=reply)
+    except Exception:
+        return
 
 @router.get("/status")
-async def slack_status():
-    """فحص حالة تكوين Slack Bot"""
-    from app.config import settings
-    from app.integrations.slack_bot import app, handler
-    
-    status = {
-        "slack_configured": bool(settings.slack_bot_token and settings.slack_signing_secret),
-        "bot_token_set": bool(settings.slack_bot_token),
-        "signing_secret_set": bool(settings.slack_signing_secret),
-        "app_initialized": app is not None,
-        "handler_initialized": handler is not None,
-        "bot_token_format": "valid" if settings.slack_bot_token and settings.slack_bot_token.startswith("xoxb-") else "invalid",
-        "environment": {
-            "SLACK_BOT_TOKEN": "SET" if settings.slack_bot_token else "MISSING",
-            "SLACK_SIGNING_SECRET": "SET" if settings.slack_signing_secret else "MISSING"
-        }
-    }
-    
-    return status
-
-@router.post("/mock")
-async def mock_slack_message(message_data: dict):
-    """اختبار رسائل Slack بدون token حقيقي"""
-    try:
-        text = message_data.get("text", "")
-        user_id = message_data.get("user", "test_user")
-        
-        if text.startswith("مهمة:"):
-            return {
-                "success": True,
-                "message": f"✅ تم إنشاء المهمة: {text.replace('مهمة:', '').strip()}",
-                "type": "task_created"
-            }
-        elif text.startswith("هدف:"):
-            return {
-                "success": True,
-                "message": f"🎯 تم تحليل الهدف: {text.replace('هدف:', '').strip()}",
-                "type": "goal_expanded",
-                "project_data": {
-                    "project_title": "مشروع تجريبي",
-                    "tasks": [
-                        {"title": "تحليل المتطلبات", "department": "general", "days": 2},
-                        {"title": "التنفيذ", "department": "general", "days": 5}
-                    ]
-                }
-            }
-        else:
-            return {
-                "success": True,
-                "message": "مرحباً! يمكنني مساعدتك في إنشاء المهام وتفكيك الأهداف",
-                "type": "help"
-            }
-            
-    except Exception as e:
-        logger.error(f"Error in mock Slack: {e}")
-        raise HTTPException(status_code=500, detail="Mock Slack error")
+def slack_status():
+    return {"ok": True}
