@@ -1,0 +1,32 @@
+
+# 🚀 دليل إنشاء تطبيق Slack (5 دقائق)
+
+## الخطوة 1: إنشاء التطبيق
+1. اذهب إلى: https://api.slack.com/apps
+2. اضغط "Create New App"
+3. اختر "From scratch"
+4. أدخل اسم: "Siyadah Ops AI"
+5. اختر Workspace الخاص بك
+
+## الخطوة 2: إعداد Bot Token
+1. اذهب إلى "OAuth & Permissions"
+2. في "Scopes" أضف:
+   - app_mentions:read
+   - chat:write
+   - users:read
+3. اضغط "Install to Workspace"
+4. انسخ "Bot User OAuth Token" (xoxb-...)
+
+## الخطوة 3: إعداد Signing Secret
+1. اذهب إلى "Basic Information"
+2. انسخ "Signing Secret"
+
+## الخطوة 4: تحديث ملف .env
+SLACK_BOT_TOKEN=xoxb-your-token-here
+SLACK_SIGNING_SECRET=your-secret-here
+
+## الخطوة 5: إضافة البوت للقناة
+1. في Slack: /invite @Siyadah Ops AI
+2. اكتب: @Siyadah Ops AI مهمة: اختبار
+
+## ✅ جاهز للاستخدام!

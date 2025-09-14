@@ -1,0 +1,11 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+motor==3.3.2
+pymongo==4.6.1
+pydantic==2.9.2
+python-dotenv==1.0.1
+openai>=1.50.0
+slack_bolt==1.19.1
+apscheduler==3.10.4
+structlog==24.4.0
+email-validator==2.2.0
