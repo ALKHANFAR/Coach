@@ -15,6 +15,27 @@ async def slack_webhook(request: Request):
         logger.error(f"Error handling Slack webhook: {e}")
         raise HTTPException(status_code=500, detail="Slack webhook error")
 
+@router.get("/status")
+async def slack_status():
+    """فحص حالة تكوين Slack Bot"""
+    from app.config import settings
+    from app.integrations.slack_bot import app, handler
+    
+    status = {
+        "slack_configured": bool(settings.slack_bot_token and settings.slack_signing_secret),
+        "bot_token_set": bool(settings.slack_bot_token),
+        "signing_secret_set": bool(settings.slack_signing_secret),
+        "app_initialized": app is not None,
+        "handler_initialized": handler is not None,
+        "bot_token_format": "valid" if settings.slack_bot_token and settings.slack_bot_token.startswith("xoxb-") else "invalid",
+        "environment": {
+            "SLACK_BOT_TOKEN": "SET" if settings.slack_bot_token else "MISSING",
+            "SLACK_SIGNING_SECRET": "SET" if settings.slack_signing_secret else "MISSING"
+        }
+    }
+    
+    return status
+
 @router.post("/mock")
 async def mock_slack_message(message_data: dict):
     """اختبار رسائل Slack بدون token حقيقي"""
